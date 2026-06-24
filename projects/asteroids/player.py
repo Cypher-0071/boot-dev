@@ -1,6 +1,7 @@
 from typing import override
 from circleshape import *
 from constants import PLAYER_RADIUS,LINE_WIDTH,PLAYER_TURN_SPEED, PLAYER_SPEED
+import pygame
 
 class Player(CircleShape):
     def __init__(self, x ,y):
