@@ -1,0 +1,9 @@
+[project]
+name = "boot-dev-workspace"
+version = "0.1.0"
+description = "Boot.dev learning workspace"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["*"]
