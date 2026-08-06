@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
+import sys
 from prompts import system_prompt
 from call_functions import available_functions
 from functions.call_function import call_function
@@ -33,21 +34,29 @@ messages = [
     }
 ]
 
-response = client.chat.completions.create(messages=messages, model=model, temperature=0, tools=available_functions)
-if response.usage is not None and args.verbose:
-    print(f"User prompt: {messages[0]['content']}")
-    print(f"Prompt tokens: {response.usage.prompt_tokens}")
-    print(f"Response tokens: {response.usage.completion_tokens}")
+max_iterations = 20
 
-message = response.choices[0].message
+for _ in range(max_iterations):
+    response = client.chat.completions.create(messages=messages, model=model, temperature=0, tools=available_functions)
+    if response.usage is not None and args.verbose:
+        print(f"User prompt: {messages[1]['content']}")
+        print(f"Prompt tokens: {response.usage.prompt_tokens}")
+        print(f"Response tokens: {response.usage.completion_tokens}")
 
-if message.tool_calls:
-    for tool_call in message.tool_calls:
-        result_message = call_function(tool_call, verbose=args.verbose)
-        if not result_message.get("content"):
-            raise Exception(f"Tool call {tool_call.function.name} returned empty content")
-        if args.verbose:
-            print(f"-> {result_message['content']}")
+    message = response.choices[0].message
+    messages.append(message)
+
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            result_message = call_function(tool_call, verbose=args.verbose)
+            if not result_message.get("content"):
+                raise Exception(f"Tool call {tool_call.function.name} returned empty content")
+            if args.verbose:
+                print(f"-> {result_message['content']}")
+            messages.append(result_message)
+    else:
+        print(message.content)
+        break
 else:
-    print(message.content)
-
+    print("Error: Maximum iterations reached without receiving a final response.")
+    sys.exit(1)
