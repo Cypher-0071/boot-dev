@@ -2,6 +2,10 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
+from prompts import system_prompt
+from call_functions import available_functions
+from functions.call_function import call_function
+import json
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -17,17 +21,33 @@ client = OpenAI(
 )
 
 model = 'openrouter/free'
+
 messages = [
+    {
+        "role": "system",
+        "content": system_prompt
+    },
     {
         "role": "user",
         "content": args.user_prompt,
     }
 ]
 
-response = client.chat.completions.create(messages=messages, model=model)
-if(response.usage  != None):
-    if(args.verbose):
-        print(f"User prompt: {messages[0]["content"]}")
-        print(f"Prompt tokens: {response.usage.prompt_tokens}")
-        print(f"Response tokens: {response.usage.completion_tokens}")
-    print(response.choices[0].message.content) 
+response = client.chat.completions.create(messages=messages, model=model, temperature=0, tools=available_functions)
+if response.usage is not None and args.verbose:
+    print(f"User prompt: {messages[0]['content']}")
+    print(f"Prompt tokens: {response.usage.prompt_tokens}")
+    print(f"Response tokens: {response.usage.completion_tokens}")
+
+message = response.choices[0].message
+
+if message.tool_calls:
+    for tool_call in message.tool_calls:
+        result_message = call_function(tool_call, verbose=args.verbose)
+        if not result_message.get("content"):
+            raise Exception(f"Tool call {tool_call.function.name} returned empty content")
+        if args.verbose:
+            print(f"-> {result_message['content']}")
+else:
+    print(message.content)
+
